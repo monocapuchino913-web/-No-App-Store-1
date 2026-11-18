@@ -1,0 +1,144 @@
+import SwiftUI
+import FamilyControls
+import ManagedSettings
+
+@MainActor
+final class ScreenTimeManager: ObservableObject {
+    @Published var selection = FamilyActivitySelection() {
+        didSet {
+            saveSelection()
+            applySettings()
+        }
+    }
+    @Published var isAuthorized = false
+    @Published var statusMessage = "Pendiente de autorización"
+
+    private let store = ManagedSettingsStore()
+    private let defaultsKey = "saved_family_activity_selection"
+
+    init() {
+        loadSelection()
+        isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
+        if isAuthorized {
+            statusMessage = "Autorizado"
+            applySettings()
+        }
+    }
+
+    func requestAuthorization() async {
+        do {
+            try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
+            isAuthorized = AuthorizationCenter.shared.authorizationStatus == .approved
+            if isAuthorized {
+                statusMessage = "Autorizado y aplicado"
+                applySettings()
+            } else {
+                statusMessage = "Permiso no aprobado"
+            }
+        } catch {
+            statusMessage = "Error: \(error.localizedDescription)"
+        }
+    }
+
+    func applySettings() {
+        // Mantiene visible la sección en Ajustes sin bloquear instalaciones globales
+        store.application.denyAppInstallation = false
+
+        // Oculta el ícono de la App Store de la pantalla de inicio y Biblioteca de apps
+        store.application.blockedApplications = selection.applicationTokens.isEmpty
+            ? nil
+            : selection.applicationTokens
+
+        // Evita duplicar la pantalla de bloqueo directa sobre el mismo token
+        store.shield.applications = nil
+
+        // Bloquea compras dentro de otras apps
+        store.appStore.denyInAppPurchases = true
+
+        statusMessage = selection.applicationTokens.isEmpty
+            ? "Configuración base aplicada (sin app seleccionada)"
+            : "Ícono oculto del inicio y sección mantenida en Ajustes"
+    }
+
+    func clearSettings() {
+        store.application.denyAppInstallation = false
+        store.application.blockedApplications = nil
+        store.shield.applications = nil
+        store.appStore.denyInAppPurchases = false
+        selection = FamilyActivitySelection()
+        UserDefaults.standard.removeObject(forKey: defaultsKey)
+        statusMessage = "Restricciones limpiadas"
+    }
+
+    private func saveSelection() {
+        guard let data = try? JSONEncoder().encode(selection) else { return }
+        UserDefaults.standard.set(data, forKey: defaultsKey)
+    }
+
+    private func loadSelection() {
+        guard
+            let data = UserDefaults.standard.data(forKey: defaultsKey),
+            let decoded = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data)
+        else { return }
+        selection = decoded
+    }
+}
+
+struct ContentView: View {
+    @StateObject private var manager = ScreenTimeManager()
+    @State private var showPicker = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Permiso") {
+                    if manager.isAuthorized {
+                        Label("FamilyControls autorizado", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Button("Autorizar Tiempo en pantalla") {
+                            Task { await manager.requestAuthorization() }
+                        }
+                    }
+
+                    Text(manager.statusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("Selección") {
+                    Button("Seleccionar App Store") {
+                        showPicker = true
+                    }
+                    .disabled(!manager.isAuthorized)
+
+                    Text("Apps seleccionadas: \(manager.selection.applicationTokens.count)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("Acciones") {
+                    Button("Aplicar configuración") {
+                        manager.applySettings()
+                    }
+                    .disabled(!manager.isAuthorized)
+
+                    Button("Quitar restricciones", role: .destructive) {
+                        manager.clearSettings()
+                    }
+                }
+            }
+            .navigationTitle("Control App Store")
+            .familyActivityPicker(isPresented: $showPicker, selection: $manager.selection)
+        }
+    }
+}
+
+@main
+struct ControlAppStoreApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
