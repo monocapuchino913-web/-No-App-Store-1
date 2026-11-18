@@ -1,0 +1,41 @@
+TUTORIAL PARA OCULTAR EL ÍCONO DE LA APP STORE (MANTENIENDO AJUSTES)
+
+1. Requisitos previos
+- Una Mac con Xcode instalado.
+- Un iPhone físico (iOS 16 o superior) conectado por cable USB o red local.
+- Tu Apple ID con membresía activa de Apple Developer Program para usar la capacidad Family Controls en un dispositivo real.
+
+2. Crear el proyecto en Xcode
+- Abre Xcode.
+- Selecciona "Create New Project".
+- Elige "iOS" -> "App" y haz clic en "Next".
+- Configura:
+  * Product Name: ControlAppStore
+  * Interface: SwiftUI
+  * Language: Swift
+- Guarda el proyecto en tu Mac.
+
+3. Activar la capacidad Family Controls
+- En el panel izquierdo de Xcode, haz clic en el ícono azul del proyecto ("ControlAppStore").
+- En "Targets", selecciona "ControlAppStore".
+- Abre la pestaña "Signing & Capabilities".
+- Haz clic en "+ Capability" (arriba a la izquierda de esa vista).
+- Busca y agrega "Family Controls".
+- Verifica que tengas seleccionado tu "Team" en "Signing" y un Bundle Identifier único (por ejemplo: com.tuusuario.ControlAppStore).
+
+4. Pegar el código Swift completo
+- Abre el archivo principal del proyecto (ControlAppStoreApp.swift).
+- Selecciona todo el contenido (Cmd + A), bórralo y pega el bloque de código Swift de abajo.
+- Compila con Cmd + B para comprobar que no haya errores de importación.
+
+5. Ejecutar en el iPhone y activar la regla
+- Desbloquea tu iPhone y conéctalo a la Mac.
+- En la barra superior de Xcode, selecciona tu iPhone como destino.
+- Pulsa "Run" (Cmd + R).
+- Si es la primera vez que instalas una app de desarrollo en ese iPhone, ve en el iPhone a:
+  Ajustes -> General -> VPN y gestión de dispositivos -> [Tu cuenta] -> Confiar.
+- Abre la app "ControlAppStore" en tu iPhone:
+  1) Toca "Autorizar Tiempo en pantalla" y acepta el aviso de iOS.
+  2) Toca "Seleccionar App Store", marca "App Store" en el selector y confirma.
+  3) Verifica que el estado indique que el ícono está oculto del inicio y la sección sigue en Ajustes.
+- Para volver a mostrar el ícono en el inicio en el futuro, abre "ControlAppStore" y toca "Quitar restricciones".
